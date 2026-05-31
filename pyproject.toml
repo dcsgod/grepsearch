@@ -1,0 +1,60 @@
+[build-system]
+requires = ["setuptools>=72", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "grepsearch"
+version = "0.1.0"
+description = "Two-stage retrieval library: BM25 lexical search + Cross-Encoder reranking"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "dcsgod" }]
+requires-python = ">=3.13"
+keywords = ["rag", "retrieval", "bm25", "reranking", "nlp", "search"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Text Processing :: Indexing",
+]
+dependencies = [
+    "pydantic>=2.0",
+    "rank-bm25>=0.2.2",
+    "sentence-transformers>=3.0",
+    "nltk>=3.8",
+]
+
+[project.optional-dependencies]
+llm = ["openai>=1.0"]
+dev = [
+    "pytest>=8.0",
+    "build",
+    "twine",
+]
+
+[project.urls]
+Homepage = "https://github.com/dcsgod/grepsearch"
+Repository = "https://github.com/dcsgod/grepsearch"
+Issues = "https://github.com/dcsgod/grepsearch/issues"
+
+# ---------------------------------------------------------------------------
+# Packaging — flat layout: all .py files live at the repo root
+# ---------------------------------------------------------------------------
+[tool.setuptools]
+py-modules = [
+    "__init__",
+    "chunker",
+    "expander",
+    "lexical",
+    "models",
+    "pipeline",
+    "reranker",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+exclude = ["tests*", "examples*", "docs*"]
