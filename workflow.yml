@@ -1,0 +1,126 @@
+name: Publish to PyPI
+
+on:
+  push:
+    tags:
+      - "v*.*.*"          # triggers on tags like v0.1.0, v1.2.3
+  workflow_dispatch:      # allow manual runs from the Actions tab
+
+jobs:
+  build:
+    name: Build distribution
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ------------------------------------------------------------------ #
+      # The repo has no pyproject.toml yet.  We generate one on-the-fly so #
+      # the workflow is fully self-contained.  Remove this step (and commit  #
+      # a real pyproject.toml) once you add one to the repo.               #
+      # ------------------------------------------------------------------ #
+      - name: Create pyproject.toml if missing
+        run: |
+          if [ ! -f pyproject.toml ]; then
+            cat > pyproject.toml << 'EOF'
+          [build-system]
+          requires = ["setuptools>=68", "wheel"]
+          build-backend = "setuptools.backends.legacy:build"
+
+          [project]
+          name = "grepsearch"
+          version = "0.1.0"
+          description = "Two-stage retrieval library: BM25 lexical search + Cross-Encoder reranking"
+          readme = "README.md"
+          license = { text = "MIT" }
+          requires-python = ">=3.9"
+          dependencies = [
+              "pydantic>=2.0",
+              "rank-bm25>=0.2.2",
+              "sentence-transformers>=2.2",
+              "nltk>=3.8",
+          ]
+
+          [project.optional-dependencies]
+          llm = ["openai>=1.0"]
+          dev = ["pytest", "build", "twine"]
+
+          [tool.setuptools.packages.find]
+          where = ["."]
+          include = ["grepsearch*"]
+
+          [tool.setuptools]
+          py-modules = [
+              "__init__",
+              "chunker",
+              "expander",
+              "lexical",
+              "models",
+              "pipeline",
+              "reranker",
+          ]
+          EOF
+          fi
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install build tools
+        run: python -m pip install --upgrade pip build twine
+
+      - name: Build sdist and wheel
+        run: python -m build
+
+      - name: Check dist with twine
+        run: twine check dist/*
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish-testpypi:
+    name: Publish to TestPyPI
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/grepsearch
+    permissions:
+      id-token: write     # required for trusted publishing (OIDC)
+
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+  publish-pypi:
+    name: Publish to PyPI
+    needs: publish-testpypi
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/grepsearch
+    permissions:
+      id-token: write     # required for trusted publishing (OIDC)
+
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
